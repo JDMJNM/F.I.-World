@@ -18,7 +18,6 @@ F.I World: Jacob Meadows' final program for Computer Programming II
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import collections
 import os
 
 import OpenGL.GL.shaders
@@ -28,6 +27,7 @@ import pyrr
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PIL import Image
+
 
 CUBE = numpy.array([0.0, 0.0, 1.0, 0.0, 0.0,
                     1.0, 0.0, 1.0, 1.0, 0.0,
@@ -183,9 +183,20 @@ class App:
         self.block_list = list()
 
         self.highlighted = None
+        self.breaking_block = None
         self.selected_block = None
         self.jumping = False
         self.crouching = False
+        self.holding_walk = False
+        self.holding_jump = False
+        self.sprinting = False
+        self.flying = False
+        self.placing = False
+        self.breaking = False
+        self.sprint_delay = 0
+        self.place_delay = 0
+        self.break_delay = 0
+        self.fly_delay = 0
         self.air_velocity = 0
         self.lastX, self.lastY = self.width / 2, self.height / 2
 
@@ -291,6 +302,7 @@ class App:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             view = self.cam.get_view_matrix()
 
+            self.mouse_button_check()
             if self.in_game:
                 if self.new_game:
                     self.game_init()
@@ -308,6 +320,8 @@ class App:
                     for i in numpy.arange(1, 4, 0.1):
                         ray_cam = self.cam.camera_pos + self.ray_wor * i
                         ray_cam.y += 1.62
+                        if self.crouching:
+                            ray_cam.y -= 0.125
                         self.ray_cam = ray_cam
                         self.ray_i = i
                         ray_cam.x, ray_cam.y, ray_cam.z = int(self.check_value(ray_cam.x, 0)), \
@@ -458,43 +472,81 @@ class App:
         x, y, z = self.cam.camera_pos
         x, y, z = self.check_value(x, 0.3), numpy.ceil(self.check_value(y, 0)), self.check_value(z, 0.3)
         if keys[pygame.K_w]:
-            if not self.crouching:
-                self.cam.process_keyboard("FRONT", net_movement)
-            else:
+            if self.sprint_delay > 0 and not self.holding_walk:
+                self.sprinting = True
+            elif self.sprint_delay == 0 and not self.holding_walk:
+                self.sprint_delay = 1
+            self.holding_walk = True
+            if self.flying:
+                if self.sprinting:
+                    self.cam.process_keyboard("FRONT", net_movement * 5.0)
+                else:
+                    self.cam.process_keyboard("FRONT", net_movement * 2.5)
+            elif self.crouching:
                 self.cam.process_keyboard("FRONT", net_movement * 0.3)
+            else:
+                if self.sprinting:
+                    self.cam.process_keyboard("FRONT", net_movement * 1.3)
+                else:
+                    self.cam.process_keyboard("FRONT", net_movement)
+        else:
+            self.holding_walk = False
+            self.sprinting = False
         if keys[pygame.K_a]:
-            if not self.crouching:
-                self.cam.process_keyboard("SIDE", -net_movement)
-            else:
+            if self.flying:
+                self.cam.process_keyboard("SIDE", -net_movement * 2.5)
+            elif self.crouching:
                 self.cam.process_keyboard("SIDE", -net_movement * 0.3)
+            else:
+                self.cam.process_keyboard("SIDE", -net_movement)
         if keys[pygame.K_s]:
-            if not self.crouching:
-                self.cam.process_keyboard("FRONT", -net_movement)
-            else:
+            if self.flying:
+                self.cam.process_keyboard("FRONT", -net_movement * 2.5)
+            elif self.crouching:
                 self.cam.process_keyboard("FRONT", -net_movement * 0.3)
-        if keys[pygame.K_d]:
-            if not self.crouching:
-                self.cam.process_keyboard("SIDE", net_movement)
             else:
+                self.cam.process_keyboard("FRONT", -net_movement)
+        if keys[pygame.K_d]:
+            if self.flying:
+                self.cam.process_keyboard("SIDE", net_movement * 2.5)
+            elif self.crouching:
                 self.cam.process_keyboard("SIDE", net_movement * 0.3)
+            else:
+                self.cam.process_keyboard("SIDE", net_movement)
         if keys[pygame.K_SPACE]:
-            if not self.jumping and ((int(x + 0.3), int(y - 1), int(z + 0.3)) in self.visible_blocks or
-                                     (int(x + 0.3), int(y - 1), int(z - 0.3)) in self.visible_blocks or
-                                     (int(x - 0.3), int(y - 1), int(z + 0.3)) in self.visible_blocks or
-                                     (int(x - 0.3), int(y - 1), int(z - 0.3)) in self.visible_blocks):
+            if self.fly_delay > 0 and not self.holding_jump:
+                self.flying = True
+            elif self.fly_delay == 0 and not self.holding_jump:
+                self.fly_delay = 1
+            self.holding_jump = True
+            if not self.jumping and not self.flying and \
+                    ((int(x + 0.3), int(y - 1), int(z + 0.3)) in self.visible_blocks or
+                     (int(x + 0.3), int(y - 1), int(z - 0.3)) in self.visible_blocks or
+                     (int(x - 0.3), int(y - 1), int(z + 0.3)) in self.visible_blocks or
+                     (int(x - 0.3), int(y - 1), int(z - 0.3)) in self.visible_blocks):
                 self.air_velocity = 8.95142 * time_s
                 self.cam.process_keyboard("UP", self.air_velocity)
                 self.jumping = True
+            if self.flying:
+                self.cam.process_keyboard("UP", net_movement * 2)
+        else:
+            self.holding_jump = False
         if mods & pygame.KMOD_SHIFT:
             if not self.crouching:
-                self.cam.process_keyboard("UP", -0.3)
+                self.cam.camera_pos[1] -= 0.125
                 self.crouching = True
+            if self.flying:
+                y_pos = self.cam.camera_pos[1]
+                self.cam.process_keyboard("UP", -net_movement * 2)
+                if y_pos == self.cam.camera_pos[1]:
+                    self.cam.camera_pos[1] = int(round(self.cam.camera_pos[1]))
+                    self.flying = False
         elif self.crouching:
-            self.cam.process_keyboard("UP", 0.3)
+            self.cam.camera_pos[1] += 0.125
             self.crouching = False
         cx, cy, cz = self.cam.camera_pos
         if self.crouching:
-            cy += 0.3
+            cy += 0.125
         cx, cy, cz = self.check_value(cx, 0.3), self.check_value(cy, 0), self.check_value(cz, 0.3)
         if (int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz + 0.3)) not in self.visible_blocks and \
                 (int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks and \
@@ -517,10 +569,11 @@ class App:
                         not in self.visible_blocks and \
                         (int(cx - 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz - 0.3)) \
                         not in self.visible_blocks:
-                    self.cam.process_keyboard("UP", self.air_velocity)
+                    if not self.flying:
+                        self.cam.process_keyboard("UP", self.air_velocity)
                 else:
                     if not self.crouching:
-                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) + 0.15
+                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) - 0.025
                     else:
                         self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) - 0.15
                     self.air_velocity = 0
@@ -529,71 +582,26 @@ class App:
                 if not self.crouching:
                     self.cam.camera_pos[1] = round(self.cam.camera_pos[1])
                 else:
-                    self.cam.camera_pos[1] = round(self.cam.camera_pos[1]) - 0.3
+                    self.cam.camera_pos[1] = round(self.cam.camera_pos[1]) - 0.125
                 self.air_velocity = 0
                 self.jumping = False
         else:
             self.air_velocity = 0
             self.jumping = False
+        if self.sprint_delay > 0:
+            self.sprint_delay -= time_s
+        else:
+            self.sprint_delay = 0
+        if self.fly_delay > 0 and self.jumping:
+            self.fly_delay -= time_s
+        else:
+            self.fly_delay = 0
 
-    def mouse_motion_callback(self, x_pos, y_pos):
-        if not self.mouse_visibility:
-            x_offset = x_pos - self.width / 2
-            y_offset = self.height / 2 - y_pos
-
-            self.cam.process_mouse_movement(x_offset, y_offset)
-            pygame.mouse.set_pos(self.width / 2, self.height / 2)
-        elif self.mouse_visibility:
-            if self.in_menu:
-                if "return_button_outline" in self.vao_2d_dict:
-                    if (x_pos, y_pos) in RETURN_BUTTON_HITBOX:
-                        if self.vao_2d_dict["return_button_outline"].texture_name != \
-                                "textures/highlighted_button_outline.png":
-                            self.vao_2d_dict["return_button_outline"].texture_name = \
-                                "textures/highlighted_button_outline.png"
-                            self.vao_2d_dict["return_button_outline"].texture = \
-                                self.load_texture("textures/highlighted_button_outline.png")
-                    elif self.vao_2d_dict["return_button_outline"].texture_name != "textures/normal_button_outline.png":
-                        self.vao_2d_dict["return_button_outline"].texture_name = "textures/normal_button_outline.png"
-                        self.vao_2d_dict["return_button_outline"].texture = \
-                            self.load_texture("textures/normal_button_outline.png")
-                if (x_pos, y_pos) in NEW_GAME_BUTTON_HITBOX:
-                    if self.vao_2d_dict["new_game_button_outline"].texture_name != \
-                            "textures/highlighted_button_outline.png":
-                        self.vao_2d_dict["new_game_button_outline"].texture_name = \
-                            "textures/highlighted_button_outline.png"
-                        self.vao_2d_dict["new_game_button_outline"].texture = \
-                            self.load_texture("textures/highlighted_button_outline.png")
-                elif self.vao_2d_dict["new_game_button_outline"].texture_name != "textures/normal_button_outline.png":
-                    self.vao_2d_dict["new_game_button_outline"].texture_name = "textures/normal_button_outline.png"
-                    self.vao_2d_dict["new_game_button_outline"].texture = \
-                        self.load_texture("textures/normal_button_outline.png")
-                if (x_pos, y_pos) in QUIT_BUTTON_HITBOX:
-                    if self.vao_2d_dict["quit_button_outline"].texture_name != \
-                            "textures/highlighted_button_outline.png":
-                        self.vao_2d_dict["quit_button_outline"].texture_name = "textures/highlighted_button_outline.png"
-                        self.vao_2d_dict["quit_button_outline"].texture = \
-                            self.load_texture("textures/highlighted_button_outline.png")
-                elif self.vao_2d_dict["quit_button_outline"].texture_name != "textures/normal_button_outline.png":
-                    self.vao_2d_dict["quit_button_outline"].texture_name = "textures/normal_button_outline.png"
-                    self.vao_2d_dict["quit_button_outline"].texture = \
-                        self.load_texture("textures/normal_button_outline.png")
-            if self.in_inventory:
-                for vao in self.vao_2d_dict:
-                    if "slot" in vao and "inventory" in vao and "active" not in vao:
-                        instance = tuple(self.vao_2d_dict[vao].instances[0])
-                        if x_pos in range(int(instance[0]), int(instance[0]) + 32) and \
-                                y_pos in range(int(instance[1]), int(instance[1]) + 32):
-                            self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array(
-                                [[int(instance[0]), int(instance[1]), -0.2]], dtype=numpy.float32
-                            ))
-                            break
-                        else:
-                            self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array([], dtype=numpy.float32))
-
-    def mouse_button_callback(self, button):
+    def mouse_button_check(self):
         mouse_pos = pygame.mouse.get_pos()
-        if button == 1:
+        mouse_buttons = pygame.mouse.get_pressed()
+        time_s = self.clock.get_time() / 1000
+        if mouse_buttons[0]:
             if self.mouse_visibility:
                 if self.in_menu:
                     if mouse_pos in RETURN_BUTTON_HITBOX:
@@ -643,35 +651,48 @@ class App:
                                 self.selected_block = self.vao_2d_dict[
                                     f"hotbar_{int((self.vao_2d_dict['active_bar'].instances[0][0] - 416.0) / 40.0)}"
                                 ].texture_name
-            elif not self.mouse_visibility and self.highlighted is not None and \
-                    self.visible_blocks[tuple(self.highlighted)] != "textures/blocks/bedrock.png":
-                px, py, pz = self.highlighted
-                px, py, pz = int(px), int(py), int(pz)
-                self.highlighted = tuple(self.highlighted)
-                del self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list[self.highlighted]
-                self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.array(
-                    tuple(self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list.keys()),
-                    dtype=numpy.float32
-                )
-                self.vao_3d_dict[self.visible_blocks[self.highlighted]].vao_update()
-                del self.visible_blocks[self.highlighted]
-                del self.world_instances[self.highlighted]
-                for x, y, z in ((px + 1, py, pz), (px, py + 1, pz), (px, py, pz + 1),
-                                (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
-                    if (x, y, z) not in self.visible_blocks and (x, y, z) in self.world_instances:
-                        self.visible_blocks[(x, y, z)] = self.world_instances[(x, y, z)]
-                        self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list[(x, y, z)] = \
-                            len(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list)
-                        self.vao_3d_dict[self.world_instances[(x, y, z)]].instances = numpy.array(
-                            tuple(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list.keys()),
-                            dtype=numpy.float32
-                        )
-                        self.vao_3d_dict[self.world_instances[(x, y, z)]].vao_update()
-                self.highlighted = None
-        elif button == 3:
-            if self.highlighted is not None:
+            if not self.mouse_visibility and self.highlighted is not None:
+                if self.break_delay <= 0 and not self.breaking:
+                    self.break_delay = 1
+                    self.breaking = True
+                    self.breaking_block = self.highlighted
+                if self.break_delay <= 0 and self.breaking and \
+                        self.visible_blocks[tuple(self.highlighted)] != "textures/blocks/bedrock.png":
+                    px, py, pz = self.highlighted
+                    px, py, pz = int(px), int(py), int(pz)
+                    self.highlighted = tuple(self.highlighted)
+                    del self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list[self.highlighted]
+                    self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.array(
+                        tuple(self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list.keys()),
+                        dtype=numpy.float32
+                    )
+                    self.vao_3d_dict[self.visible_blocks[self.highlighted]].vao_update()
+                    del self.visible_blocks[self.highlighted]
+                    del self.world_instances[self.highlighted]
+                    for x, y, z in ((px + 1, py, pz), (px, py + 1, pz), (px, py, pz + 1),
+                                    (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
+                        if (x, y, z) not in self.visible_blocks and (x, y, z) in self.world_instances:
+                            self.visible_blocks[(x, y, z)] = self.world_instances[(x, y, z)]
+                            self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list[(x, y, z)] = \
+                                len(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list)
+                            self.vao_3d_dict[self.world_instances[(x, y, z)]].instances = numpy.array(
+                                tuple(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list.keys()),
+                                dtype=numpy.float32
+                            )
+                            self.vao_3d_dict[self.world_instances[(x, y, z)]].vao_update()
+                    self.highlighted = None
+                    self.breaking_block = None
+                    self.breaking = False
+        else:
+            self.break_delay = 0
+            self.breaking = False
+        if mouse_buttons[2]:
+            if self.highlighted is not None and self.place_delay <= 0:
+                self.place_delay += 0.25
                 new_block = self.block_face()
                 x, y, z = self.cam.camera_pos
+                if self.crouching:
+                    y += 0.125
                 x, y, z = self.check_value(x, 0.3), self.check_value(y, 0), self.check_value(z, 0.3)
                 player_hitbox = ((x, y, z), (x, y + 1, z), (x, y + 2, z),
                                  (int(x + 0.3), int(y), int(z + 0.3)),
@@ -729,7 +750,73 @@ class App:
                         tuple(self.vao_3d_dict[self.selected_block].instances_list.keys()), dtype=numpy.float32
                     )
                     self.vao_3d_dict[self.selected_block].vao_update()
-        elif button == 4:
+        else:
+            self.place_delay = 0
+        if self.place_delay > 0:
+            self.place_delay -= time_s
+        if self.breaking and self.breaking_block.tolist() != self.highlighted.tolist():
+            self.break_delay = 1
+            self.breaking_block = self.highlighted
+        if self.break_delay > 0:
+            self.break_delay -= time_s
+
+    def mouse_motion_callback(self, x_pos, y_pos):
+        if not self.mouse_visibility:
+            x_offset = x_pos - self.width / 2
+            y_offset = self.height / 2 - y_pos
+
+            self.cam.process_mouse_movement(x_offset, y_offset)
+            pygame.mouse.set_pos(self.width / 2, self.height / 2)
+        elif self.mouse_visibility:
+            if self.in_menu:
+                if "return_button_outline" in self.vao_2d_dict:
+                    if (x_pos, y_pos) in RETURN_BUTTON_HITBOX:
+                        if self.vao_2d_dict["return_button_outline"].texture_name != \
+                                "textures/highlighted_button_outline.png":
+                            self.vao_2d_dict["return_button_outline"].texture_name = \
+                                "textures/highlighted_button_outline.png"
+                            self.vao_2d_dict["return_button_outline"].texture = \
+                                self.load_texture("textures/highlighted_button_outline.png")
+                    elif self.vao_2d_dict["return_button_outline"].texture_name != "textures/normal_button_outline.png":
+                        self.vao_2d_dict["return_button_outline"].texture_name = "textures/normal_button_outline.png"
+                        self.vao_2d_dict["return_button_outline"].texture = \
+                            self.load_texture("textures/normal_button_outline.png")
+                if (x_pos, y_pos) in NEW_GAME_BUTTON_HITBOX:
+                    if self.vao_2d_dict["new_game_button_outline"].texture_name != \
+                            "textures/highlighted_button_outline.png":
+                        self.vao_2d_dict["new_game_button_outline"].texture_name = \
+                            "textures/highlighted_button_outline.png"
+                        self.vao_2d_dict["new_game_button_outline"].texture = \
+                            self.load_texture("textures/highlighted_button_outline.png")
+                elif self.vao_2d_dict["new_game_button_outline"].texture_name != "textures/normal_button_outline.png":
+                    self.vao_2d_dict["new_game_button_outline"].texture_name = "textures/normal_button_outline.png"
+                    self.vao_2d_dict["new_game_button_outline"].texture = \
+                        self.load_texture("textures/normal_button_outline.png")
+                if (x_pos, y_pos) in QUIT_BUTTON_HITBOX:
+                    if self.vao_2d_dict["quit_button_outline"].texture_name != \
+                            "textures/highlighted_button_outline.png":
+                        self.vao_2d_dict["quit_button_outline"].texture_name = "textures/highlighted_button_outline.png"
+                        self.vao_2d_dict["quit_button_outline"].texture = \
+                            self.load_texture("textures/highlighted_button_outline.png")
+                elif self.vao_2d_dict["quit_button_outline"].texture_name != "textures/normal_button_outline.png":
+                    self.vao_2d_dict["quit_button_outline"].texture_name = "textures/normal_button_outline.png"
+                    self.vao_2d_dict["quit_button_outline"].texture = \
+                        self.load_texture("textures/normal_button_outline.png")
+            if self.in_inventory:
+                for vao in self.vao_2d_dict:
+                    if "slot" in vao and "inventory" in vao and "active" not in vao:
+                        instance = tuple(self.vao_2d_dict[vao].instances[0])
+                        if x_pos in range(int(instance[0]), int(instance[0]) + 32) and \
+                                y_pos in range(int(instance[1]), int(instance[1]) + 32):
+                            self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array(
+                                [[int(instance[0]), int(instance[1]), -0.2]], dtype=numpy.float32
+                            ))
+                            break
+                        else:
+                            self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array([], dtype=numpy.float32))
+
+    def mouse_button_callback(self, button):
+        if button == 4:
             if not self.paused:
                 new_hotbar = int((self.vao_2d_dict["active_bar"].instances[0][0] - 416.0) / 40.0 - 1.0)
                 if new_hotbar < 1:
@@ -870,6 +957,7 @@ class Camera:
             self.check_pos(2, numpy.sin(numpy.radians(self.yaw) + numpy.pi / 2) * velocity)
         elif direction == "UP":
             self.camera_pos[1] += velocity
+            self.check_pos(1, velocity)
 
     def process_mouse_movement(self, x_offset, y_offset, constrain_pitch=True):
         x_offset *= self.mouse_sensitivity
@@ -899,7 +987,7 @@ class Camera:
     def check_pos(self, axis, distance):
         x, y, z = self.camera_pos
         if self.app.crouching:
-            y += 0.3
+            y += 0.125
         x, y, z = self.app.check_value(x, 0.3), self.app.check_value(y, 0), self.app.check_value(z, 0.3)
         for i1, i2 in {(-.3, -.3), (-.3, .3), (.3, -.3), (.3, .3)}:
             ix, iy, iz = int(x + i1), y, int(z + i2)

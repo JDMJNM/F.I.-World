@@ -12,6 +12,19 @@
 * E - Access inventory
 * Esc - Pause game and open menu
 * P - Respawn at starting position
+# V1.2.1
+* Added sprinting and flying:
+    * Sprinting can be achieved by double-pressing the "w" key.
+    * Flying is enabled by double-pressing the "space" key.
+* Updated placement and destruction of blocks:
+    * Breaking any block now requires players to hold the left mouse button for 1 second.
+    * Placing blocks are still done by right-clicking, but are now also able to be placed consecutively after a 250
+    millisecond cool-down by holding the right mouse button.
+* Tweaked/updated crouching:
+    * Crouching now lowers the player's camera view by 0.125 meters instead of 0.3 meters.
+* What's next?
+    * Adding animations are next on my list, which will most likely take days to complete.
+    * I also plan on adding basic items such as tools (shovels, pickaxes, axes, etc.)
 # V1.0.0
 * GitHub initialization
 * Basic main and pause menu
