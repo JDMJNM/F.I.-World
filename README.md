@@ -12,6 +12,18 @@
 * E - Access inventory
 * Esc - Pause game and open menu
 * P - Respawn at starting position
+# V1.2.4
+* Patched sprinting and flying:
+    * Both sprinting and flying have a delay time of 250 milliseconds instead of the previous 1000 milliseconds.
+* Updated placement and destruction of blocks:
+    * The delay to break a block and consecutively place blocks have been shortened to 250 milliseconds as well.
+* Tweaked/updated crouching:
+    * Crouching now stops the player from falling off blocks if they try to walk off one.
+* Fixed lag issues with larger worlds and initialization
+* Tweaked/updated a lot of other things as well (such as window title, code format, etc.)
+* What's next?
+    * Adding animations is still on my list.
+    * Items and visual cues will most likely occur before animations (with the exception of block breaking).
 # V1.2.1
 * Added sprinting and flying:
     * Sprinting can be achieved by double-pressing the "w" key.

@@ -58,18 +58,6 @@ CUBE = numpy.array([0.0, 0.0, 1.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 1.0, 0.0,
                     0.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 0.0, 1.0], dtype=numpy.float32)
-CUBE_INDICES = numpy.array([0, 1, 2, 2, 3, 0,
-                            6, 5, 4, 4, 7, 6,
-                            8, 9, 10, 10, 11, 8,
-                            12, 13, 14, 14, 15, 12,
-                            16, 17, 18, 18, 19, 16,
-                            20, 21, 22, 22, 23, 20], dtype=numpy.uint32)
-CUBE_INDICES_EDGES = numpy.array([0, 1, 2, 3,
-                                  6, 5, 4, 7,
-                                  8, 9, 10, 11,
-                                  12, 13, 14, 15,
-                                  16, 17, 18, 19,
-                                  20, 21, 22, 23], dtype=numpy.uint32)
 HOTBAR = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0,
                       0.0, 44.0, 0.0, 0.0, 1.0,
                       364.0, 44.0, 0.0, 1.0, 1.0,
@@ -102,6 +90,18 @@ BUTTON_OUTLINE = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0,
                               0.0, 40.0, 0.0, 0.0, 1.0,
                               400.0, 40.0, 0.0, 1.0, 1.0,
                               400.0, 0.0, 0.0, 1.0, 0.0], dtype=numpy.float32)
+CUBE_INDICES = numpy.array([0, 1, 2, 2, 3, 0,
+                            6, 5, 4, 4, 7, 6,
+                            8, 9, 10, 10, 11, 8,
+                            12, 13, 14, 14, 15, 12,
+                            16, 17, 18, 18, 19, 16,
+                            20, 21, 22, 22, 23, 20], dtype=numpy.uint32)
+CUBE_INDICES_EDGES = numpy.array([0, 1, 2, 3,
+                                  6, 5, 4, 7,
+                                  8, 9, 10, 11,
+                                  12, 13, 14, 15,
+                                  16, 17, 18, 19,
+                                  20, 21, 22, 23], dtype=numpy.uint32)
 QUAD_INDICES = numpy.array([0, 1, 2, 2, 3, 0], dtype=numpy.uint32)
 CHARACTER_DICT = {
     "a": (((8, 48), (5, 5)), ((8, 32), (5, 7))),
@@ -151,24 +151,20 @@ SPECIAL_CHARACTER_DICT = {
     "9": ((72, 24), (5, 7))
 }
 ASCII_PNG = Image.open("textures/character_sheet/ascii.png")
-RETURN_BUTTON_HITBOX = [(x, y) for x in range(440, 440 + 400) for y in range(240, 240 + 40)]
-NEW_GAME_BUTTON_HITBOX = [(x, y) for x in range(440, 440 + 400) for y in range(290, 290 + 40)]
-QUIT_BUTTON_HITBOX = [(x, y) for x in range(440, 440 + 400) for y in range(340, 340 + 40)]
-INVENTORY_HITBOX = [(x, y) for x in range(464, 464 + 352) for y in range(146, 146 + 332)]
 
 
 class App:
     def __init__(self, width, height):
         pygame.init()
         self.width, self.height = width, height
-        pygame.display.set_caption("False Insignia")
+        pygame.display.set_caption("F.I. World")
         self.main_window = pygame.display.set_mode((self.width, self.height),
                                                    pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE)
 
         self.clock = pygame.time.Clock()
         self.cam = Camera(self)
 
-        self.chunks = 2  # radius of chunks around player in world (temporary variable)
+        self.chunks = 3  # radius of chunks around player in world (temporary variable)
         self.mouse_visibility = True
         self.in_game = False
         self.in_menu = True
@@ -199,6 +195,7 @@ class App:
         self.fly_delay = 0
         self.air_velocity = 0
         self.lastX, self.lastY = self.width / 2, self.height / 2
+        self.fps = 0
 
         glClearColor(135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0, 0.0)
         glClearDepth(1.0)  # may be optional
@@ -223,6 +220,7 @@ class App:
         )
         self.char_3.add_text("New Game", [565.0, 300.0, -0.3])
         self.char_3.add_text("Quit", [610.0, 350.0, -0.3])
+        self.char_2.add_text(f"{self.fps}", [1240.0, 20.0, -0.4])
         for block in os.listdir("./textures/blocks"):
             self.vao_3d_dict[f"textures/blocks/{block}"] = VAOManager(
                 CUBE, CUBE_INDICES, CUBE_INDICES_EDGES, f"textures/blocks/{block}", []
@@ -230,12 +228,12 @@ class App:
             self.block_list.append(f"textures/blocks/{block}")
         for x in range(-self.chunks, self.chunks):
             for z in range(-self.chunks, self.chunks):
-                self.chunk_dict[(x * 16, -1, z * 16)] = ChunkManager(self, (x * 16, -1, z * 16))
+                self.chunk_dict[(x * 16, -1, z * 16)] = ChunkManager((x, z), self, (x * 16, -1, z * 16))
         self.vao_2d_dict["crosshair_v"] = VAOManager(
             CROSSHAIR_V, QUAD_INDICES, QUAD_INDICES, "textures/white.png", [[624.0, 344.0, -0.6]]
         )
         self.vao_2d_dict["crosshair_h"] = VAOManager(
-            CROSSHAIR_H, QUAD_INDICES, QUAD_INDICES, "textures/white.png", [[624.0, 344.0, -0.65]]
+            CROSSHAIR_H, QUAD_INDICES, QUAD_INDICES, "textures/white.png", [[624.0, 344.0, -0.6]]
         )
         self.vao_2d_dict["hotbar"] = VAOManager(
             HOTBAR, QUAD_INDICES, QUAD_INDICES, "textures/hotbar.png", [[458.0, 676.0, -0.6]]
@@ -290,6 +288,16 @@ class App:
                     quit()
                 elif event.type == pygame.KEYDOWN:
                     self.key_callback(event.key)
+                    if self.new_game:
+                        self.cam.camera_pos = pyrr.Vector3([0.0, 32, 0.0])
+                        self.char_2.clear()
+                        self.char_4.clear()
+                        self.char_10.clear()
+                        self.char_2.add_text(f"{self.fps}", [1240.0, 20.0, -0.4])
+                        pygame.mouse.set_visible(False)
+                        self.mouse_visibility = False
+                        self.in_game = True
+                        self.new_game = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.mouse_button_callback(event.button)
                 elif event.type == pygame.MOUSEMOTION:
@@ -298,6 +306,7 @@ class App:
                     self.width, self.height = event.w, event.h
                     glViewport(0, 0, event.w, event.h)
 
+            old_fps = self.fps
             glClearColor(135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0, 1.0)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             view = self.cam.get_view_matrix()
@@ -306,8 +315,8 @@ class App:
             if self.in_game:
                 if self.new_game:
                     self.game_init()
-                    self.new_game = False
-                if not self.paused:
+                    pygame.event.clear()
+                if not self.paused:  # implement ray casting
                     self.do_movement()
                     view = self.cam.get_view_matrix()
                     mx, my = pygame.mouse.get_pos()
@@ -317,11 +326,9 @@ class App:
                     ray_eye = pyrr.Vector4([*ray_eye.xy, -1.0, 0.0])
                     ray_wor = (numpy.linalg.inv(view) * ray_eye).xyz
                     self.ray_wor = pyrr.vector.normalise(ray_wor)
-                    for i in numpy.arange(1, 4, 0.1):
+                    for i in numpy.arange(1, 4, 0.01):
                         ray_cam = self.cam.camera_pos + self.ray_wor * i
                         ray_cam.y += 1.62
-                        if self.crouching:
-                            ray_cam.y -= 0.125
                         self.ray_cam = ray_cam
                         self.ray_i = i
                         ray_cam.x, ray_cam.y, ray_cam.z = int(self.check_value(ray_cam.x, 0)), \
@@ -342,50 +349,53 @@ class App:
             glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj)
             glUniformMatrix4fv(view_loc, 1, GL_FALSE, view)
             for vao in self.vao_3d_dict:
-                glBindVertexArray(self.vao_3d_dict[vao].vao)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo)
-                glBindTexture(GL_TEXTURE_2D, self.vao_3d_dict[vao].texture)
-                glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].instance_vbo)
-                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-                glEnableVertexAttribArray(2)
-                glVertexAttribDivisor(2, 1)
-                glDrawElementsInstanced(GL_TRIANGLES, len(CUBE_INDICES),
-                                        GL_UNSIGNED_INT, None, int(len(self.vao_3d_dict[vao].instances)))
-                if self.highlighted is not None and self.visible_blocks[tuple(self.highlighted)] == vao:
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo_edge)
-                    glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].highlighted_vbo)
-                    glBufferData(GL_ARRAY_BUFFER, self.highlighted.itemsize * len(self.highlighted.flatten()),
-                                 self.highlighted.flatten(), GL_STATIC_DRAW)
+                if len(self.vao_3d_dict[vao].instances) > 0:
+                    glBindVertexArray(self.vao_3d_dict[vao].vao)
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo)
+                    glBindTexture(GL_TEXTURE_2D, self.vao_3d_dict[vao].texture)
+                    glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].instance_vbo)
                     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
                     glEnableVertexAttribArray(2)
                     glVertexAttribDivisor(2, 1)
-                    glBindTexture(GL_TEXTURE_2D, 0)
-                    glLineWidth(4)  # todo figure out how large the outlines need to be for highlighted blocks
-                    glDrawElementsInstanced(GL_QUADS, len(CUBE_INDICES_EDGES),
-                                            GL_UNSIGNED_INT, None, int(len(self.highlighted)) - 2)
-                glBindVertexArray(0)
+                    glDrawElementsInstanced(GL_TRIANGLES, len(CUBE_INDICES),
+                                            GL_UNSIGNED_INT, None, int(len(self.vao_3d_dict[vao].instances)))
+                    if self.highlighted is not None and self.visible_blocks[tuple(self.highlighted)] == vao:
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo_edge)
+                        glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].highlighted_vbo)
+                        glBufferData(GL_ARRAY_BUFFER, self.highlighted.itemsize * len(self.highlighted.flatten()),
+                                     self.highlighted.flatten(), GL_STATIC_DRAW)
+                        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                        glEnableVertexAttribArray(2)
+                        glVertexAttribDivisor(2, 1)
+                        glBindTexture(GL_TEXTURE_2D, 0)
+                        glLineWidth(4)  # todo figure out how large the outlines need to be for highlighted blocks
+                        glDrawElementsInstanced(GL_QUADS, len(CUBE_INDICES_EDGES),
+                                                GL_UNSIGNED_INT, None, int(len(self.highlighted)) - 2)
+                    glBindVertexArray(0)
 
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, model_2d)
             glUniformMatrix4fv(proj_loc, 1, GL_FALSE, proj_2d)
             glUniformMatrix4fv(view_loc, 1, GL_FALSE, model_2d)
             for vao in self.vao_2d_dict:
-                if ("inventory" in vao and self.in_inventory) or (vao == "paused" and self.paused) or \
-                        ("button" in vao and self.in_menu) or ("character_3" in vao and self.in_menu) or \
-                        ("bar" in vao and self.in_game and "inventory" not in vao) or \
-                        ("cross" in vao and self.in_game) or \
-                        ("inventory" not in vao and vao != "paused" and "button" not in vao and
-                         "character_3" not in vao and "bar" not in vao and "cross" not in vao):
-                    glBindVertexArray(self.vao_2d_dict[vao].vao)
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # is here only if the last 3d block is highlighted
-                    glBindTexture(GL_TEXTURE_2D, self.vao_2d_dict[vao].texture)
-                    glDrawElementsInstanced(GL_TRIANGLES, len(QUAD_INDICES),
-                                            GL_UNSIGNED_INT, None, int(len(self.vao_2d_dict[vao].instances)))
-                    glBindVertexArray(0)
+                if len(self.vao_2d_dict[vao].instances) > 0:
+                    if ("inventory" in vao and self.in_inventory) or (vao == "paused" and self.paused) or \
+                            ("button" in vao and self.in_menu) or ("character_3" in vao and self.in_menu) or \
+                            ("bar" in vao and self.in_game and "inventory" not in vao) or \
+                            ("cross" in vao and self.in_game) or \
+                            ("inventory" not in vao and vao != "paused" and "button" not in vao and
+                             "character_3" not in vao and "bar" not in vao and "cross" not in vao):
+                        glBindVertexArray(self.vao_2d_dict[vao].vao)
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)  # is here only if the last 3d block is highlighted
+                        glBindTexture(GL_TEXTURE_2D, self.vao_2d_dict[vao].texture)
+                        glDrawElementsInstanced(GL_TRIANGLES, len(QUAD_INDICES),
+                                                GL_UNSIGNED_INT, None, int(len(self.vao_2d_dict[vao].instances)))
+                        glBindVertexArray(0)
 
-            self.char_2.clear()
-            self.char_2.add_text(f"{round(self.clock.get_fps())}", [1240.0, 20.0, -0.4])
+            self.fps = round(self.clock.get_fps())
+            self.char_2.remove_text(f"{old_fps}", [1240.0, 20.0, -0.4])
+            self.char_2.add_text(f"{self.fps}", [1240.0, 20.0, -0.4])
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -437,32 +447,31 @@ class App:
         for chunk in self.chunk_dict.values():
             chunk.chunk_init()
         for vao in self.vao_3d_dict:
-            for pos in self.vao_3d_dict[vao].instances_list:
+            for pos in self.vao_3d_dict[vao].instances:
                 self.world_instances[tuple(pos)] = vao
-            for pos in self.world_instances:
-                i = 0
-                px, py, pz = pos
-                for x, y, z in ((px + 1, py, pz), (px, py + 1, pz), (px, py, pz + 1),
-                                (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
-                    if (x, y, z) in self.world_instances:
-                        i += 1
-                if i < 6:
-                    self.visible_blocks[pos] = self.world_instances[pos]
-            self.vao_3d_dict[vao].instances_list.clear()
-            for pos in self.visible_blocks:
-                if self.visible_blocks[pos] == vao:
-                    self.vao_3d_dict[vao].instances_list[pos] = len(self.vao_3d_dict[vao].instances_list)
-            self.vao_3d_dict[vao].instances = numpy.array(
-                tuple(self.vao_3d_dict[vao].instances_list.keys()),
-                dtype=numpy.float32)
-            self.vao_3d_dict[vao].vao_update()
-        self.cam.camera_pos = pyrr.Vector3([0.0, 32, 0.0])
-        self.char_2.clear()
-        self.char_4.clear()
-        self.char_10.clear()
-        pygame.mouse.set_visible(False)
-        self.mouse_visibility = False
-        self.in_game = True
+        for pos in self.world_instances:
+            i = 0
+            px, py, pz = pos
+            for x, y, z in ((px + 1, py, pz), (px, py + 1, pz), (px, py, pz + 1),
+                            (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
+                if (x, y, z) in self.world_instances:
+                    i += 1
+            if i < 6:
+                self.visible_blocks[pos] = self.world_instances[pos]
+        for vao in self.vao_3d_dict:
+            if vao in self.visible_blocks.values():
+                self.vao_3d_dict[vao].instances = numpy.array([], dtype=numpy.float32)
+                for pos in self.visible_blocks:
+                    if self.visible_blocks[pos] == vao:
+                        if len(self.vao_3d_dict[vao].instances) > 0:
+                            self.vao_3d_dict[vao].instances = numpy.append(
+                                self.vao_3d_dict[vao].instances, numpy.array([pos], dtype=numpy.float32), 0
+                            )
+                        else:
+                            self.vao_3d_dict[vao].instances = numpy.array([pos], dtype=numpy.float32)
+                self.vao_3d_dict[vao].vao_update()
+        self.char_4.remove_text("Loading...", [548.0, 600.0, -0.4])
+        self.char_4.add_text("Press any key to continue", [380.0, 600.0, -0.4])
 
     def do_movement(self):
         keys = pygame.key.get_pressed()
@@ -475,7 +484,7 @@ class App:
             if self.sprint_delay > 0 and not self.holding_walk:
                 self.sprinting = True
             elif self.sprint_delay == 0 and not self.holding_walk:
-                self.sprint_delay = 1
+                self.sprint_delay = 0.25
             self.holding_walk = True
             if self.flying:
                 if self.sprinting:
@@ -515,9 +524,11 @@ class App:
                 self.cam.process_keyboard("SIDE", net_movement)
         if keys[pygame.K_SPACE]:
             if self.fly_delay > 0 and not self.holding_jump:
-                self.flying = True
+                self.flying = not self.flying
+                self.air_velocity = 0
+                self.jumping = False
             elif self.fly_delay == 0 and not self.holding_jump:
-                self.fly_delay = 1
+                self.fly_delay = 0.25
             self.holding_jump = True
             if not self.jumping and not self.flying and \
                     ((int(x + 0.3), int(y - 1), int(z + 0.3)) in self.visible_blocks or
@@ -536,11 +547,7 @@ class App:
                 self.cam.camera_pos[1] -= 0.125
                 self.crouching = True
             if self.flying:
-                y_pos = self.cam.camera_pos[1]
                 self.cam.process_keyboard("UP", -net_movement * 2)
-                if y_pos == self.cam.camera_pos[1]:
-                    self.cam.camera_pos[1] = int(round(self.cam.camera_pos[1]))
-                    self.flying = False
         elif self.crouching:
             self.cam.camera_pos[1] += 0.125
             self.crouching = False
@@ -551,7 +558,7 @@ class App:
         if (int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz + 0.3)) not in self.visible_blocks and \
                 (int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks and \
                 (int(cx - 0.3), int(numpy.ceil(cy - 1)), int(cz + 0.3)) not in self.visible_blocks and \
-                (int(cx - 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks:
+                (int(cx - 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks and not self.flying:
             self.air_velocity -= 32 * time_s ** 2
             if (int(cx + 0.3), int(numpy.ceil(cy + self.air_velocity - 1)), int(cz + 0.3)) \
                     not in self.visible_blocks and \
@@ -569,15 +576,15 @@ class App:
                         not in self.visible_blocks and \
                         (int(cx - 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz - 0.3)) \
                         not in self.visible_blocks:
-                    if not self.flying:
-                        self.cam.process_keyboard("UP", self.air_velocity)
+                    self.cam.process_keyboard("UP", self.air_velocity)
                 else:
                     if not self.crouching:
-                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) - 0.025
+                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) + 0.15
                     else:
-                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) - 0.15
+                        self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) + 0.025
                     self.air_velocity = 0
                     self.jumping = False
+                    self.flying = False
             else:
                 if not self.crouching:
                     self.cam.camera_pos[1] = round(self.cam.camera_pos[1])
@@ -585,75 +592,48 @@ class App:
                     self.cam.camera_pos[1] = round(self.cam.camera_pos[1]) - 0.125
                 self.air_velocity = 0
                 self.jumping = False
-        else:
+                self.flying = False
+        elif not ((int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz + 0.3)) not in self.visible_blocks and
+                  (int(cx + 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks and
+                  (int(cx - 0.3), int(numpy.ceil(cy - 1)), int(cz + 0.3)) not in self.visible_blocks and
+                  (int(cx - 0.3), int(numpy.ceil(cy - 1)), int(cz - 0.3)) not in self.visible_blocks):
+            if not self.crouching:
+                self.cam.camera_pos[1] = round(self.cam.camera_pos[1])
+            else:
+                self.cam.camera_pos[1] = round(self.cam.camera_pos[1]) - 0.125
             self.air_velocity = 0
             self.jumping = False
+            self.flying = False
+        elif not ((int(cx + 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz + 0.3))
+                  not in self.visible_blocks and
+                  (int(cx + 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz - 0.3))
+                  not in self.visible_blocks and
+                  (int(cx - 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz + 0.3))
+                  not in self.visible_blocks and
+                  (int(cx - 0.3), int(numpy.ceil(cy + 1.85 + self.air_velocity - 1)), int(cz - 0.3))
+                  not in self.visible_blocks):
+            if not self.crouching:
+                self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) + 0.149
+            else:
+                self.cam.camera_pos[1] = int(self.cam.camera_pos[1]) + 0.024
         if self.sprint_delay > 0:
             self.sprint_delay -= time_s
         else:
             self.sprint_delay = 0
-        if self.fly_delay > 0 and self.jumping:
+        if self.fly_delay > 0:
             self.fly_delay -= time_s
         else:
             self.fly_delay = 0
+        if self.cam.camera_pos[1] < -64 and self.in_game:
+            self.cam.camera_pos = pyrr.Vector3([0.0, 32, 0.0])
 
     def mouse_button_check(self):
-        mouse_pos = pygame.mouse.get_pos()
         mouse_buttons = pygame.mouse.get_pressed()
         time_s = self.clock.get_time() / 1000
         if mouse_buttons[0]:
-            if self.mouse_visibility:
-                if self.in_menu:
-                    if mouse_pos in RETURN_BUTTON_HITBOX:
-                        pygame.mouse.set_visible(False)
-                        self.mouse_visibility = False
-                        pygame.mouse.set_pos(self.width / 2, self.height / 2)
-                        self.paused = False
-                        self.in_menu = False
-                    elif mouse_pos in NEW_GAME_BUTTON_HITBOX:
-                        self.char_10.add_text("F.I. World", [430.0, 120.0, -0.4])
-                        self.paused = False
-                        self.in_game = True
-                        self.new_game = True
-                    elif mouse_pos in QUIT_BUTTON_HITBOX:
-                        pygame.event.post(pygame.event.Event(pygame.QUIT, dict()))
-                if self.in_inventory:
-                    if mouse_pos not in INVENTORY_HITBOX:
-                        pygame.mouse.set_pos(self.width / 2, self.height / 2)
-                        pygame.mouse.set_visible(False)
-                        self.mouse_visibility = False
-                        self.paused = False
-                        self.in_inventory = False
-                    elif len(self.vao_2d_dict["active_inventory_slot"].instances) > 0:
-                        instance = tuple(self.vao_2d_dict["active_inventory_slot"].instances[0])
-                        if f"inventory_slot_{int(((int(instance[0]) - 444) / 36) + (int(instance[1]) - 314) / 4)}" in \
-                                self.vao_2d_dict:
-                            mouse_vao = \
-                                f"inventory_slot_{int(((int(instance[0]) - 444) / 36) + (int(instance[1]) - 314) / 4)}"
-                        elif f"inventory_hotbar_slot_{int(((int(instance[0]) - 444) / 36))}" in self.vao_2d_dict:
-                            mouse_vao = f"inventory_hotbar_slot_{int(((int(instance[0]) - 444) / 36))}"
-                        else:
-                            mouse_vao = None
-                        if mouse_vao is not None:
-                            self.vao_2d_dict["mouse_inventory"].vao_update(numpy.array(
-                                [[int(instance[0]), int(instance[1]), -0.3]], dtype=numpy.float32
-                            ))
-                            self.vao_2d_dict["mouse_inventory"].texture_name, \
-                                self.vao_2d_dict[mouse_vao].texture_name = self.vao_2d_dict[mouse_vao].texture_name, \
-                                self.vao_2d_dict["mouse_inventory"].texture_name
-                            self.vao_2d_dict["mouse_inventory"].texture, self.vao_2d_dict[mouse_vao].texture = \
-                                self.vao_2d_dict[mouse_vao].texture, self.vao_2d_dict["mouse_inventory"].texture
-                            if "hotbar" in mouse_vao:
-                                self.vao_2d_dict[f"hotbar_{mouse_vao[-1]}"].texture_name = \
-                                    self.vao_2d_dict[mouse_vao].texture_name
-                                self.vao_2d_dict[f"hotbar_{mouse_vao[-1]}"].texture = \
-                                    self.vao_2d_dict[mouse_vao].texture
-                                self.selected_block = self.vao_2d_dict[
-                                    f"hotbar_{int((self.vao_2d_dict['active_bar'].instances[0][0] - 416.0) / 40.0)}"
-                                ].texture_name
             if not self.mouse_visibility and self.highlighted is not None:
                 if self.break_delay <= 0 and not self.breaking:
-                    self.break_delay = 1
+                    self.break_delay = 0.25
                     self.breaking = True
                     self.breaking_block = self.highlighted
                 if self.break_delay <= 0 and self.breaking and \
@@ -661,10 +641,14 @@ class App:
                     px, py, pz = self.highlighted
                     px, py, pz = int(px), int(py), int(pz)
                     self.highlighted = tuple(self.highlighted)
-                    del self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list[self.highlighted]
-                    self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.array(
-                        tuple(self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list.keys()),
-                        dtype=numpy.float32
+                    self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.delete(
+                        self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances,
+                        numpy.where((self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 0] ==
+                                     self.highlighted[0]) &
+                                    (self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 1] ==
+                                     self.highlighted[1]) &
+                                    (self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 2] ==
+                                     self.highlighted[2])), 0
                     )
                     self.vao_3d_dict[self.visible_blocks[self.highlighted]].vao_update()
                     del self.visible_blocks[self.highlighted]
@@ -673,16 +657,17 @@ class App:
                                     (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
                         if (x, y, z) not in self.visible_blocks and (x, y, z) in self.world_instances:
                             self.visible_blocks[(x, y, z)] = self.world_instances[(x, y, z)]
-                            self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list[(x, y, z)] = \
-                                len(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list)
-                            self.vao_3d_dict[self.world_instances[(x, y, z)]].instances = numpy.array(
-                                tuple(self.vao_3d_dict[self.world_instances[(x, y, z)]].instances_list.keys()),
-                                dtype=numpy.float32
+                            self.vao_3d_dict[self.world_instances[(x, y, z)]].instances = numpy.append(
+                                self.vao_3d_dict[self.world_instances[(x, y, z)]].instances,
+                                numpy.array([[x, y, z]], dtype=numpy.float32), 0
                             )
                             self.vao_3d_dict[self.world_instances[(x, y, z)]].vao_update()
                     self.highlighted = None
                     self.breaking_block = None
                     self.breaking = False
+            else:
+                self.break_delay = 0
+                self.breaking = False
         else:
             self.break_delay = 0
             self.breaking = False
@@ -725,37 +710,46 @@ class App:
                                             "ice" not in self.world_instances[(x2, y2, z2)]:
                                         i2 += 1
                                 if i2 >= 6:
-                                    del self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances_list[(x, y, z)]
-                                    self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances = numpy.array(
-                                        tuple(self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances_list.keys()),
-                                        dtype=numpy.float32
+                                    self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances = numpy.delete(
+                                        self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances,
+                                        numpy.where(
+                                            (self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances[:, 0] == x) &
+                                            (self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances[:, 1] == y) &
+                                            (self.vao_3d_dict[self.visible_blocks[(x, y, z)]].instances[:, 2] == z)
+                                        ), 0
                                     )
                                     self.vao_3d_dict[self.visible_blocks[(x, y, z)]].vao_update()
                                     del self.visible_blocks[(x, y, z)]
                     if i >= 6:
                         self.highlighted = tuple(self.highlighted)
-                        del self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list[self.highlighted]
-                        self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.array(
-                            tuple(self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances_list.keys()),
-                            dtype=numpy.float32
+                        self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances = numpy.delete(
+                            self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances,
+                            numpy.where((self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 0] ==
+                                         self.highlighted[0]) &
+                                        (self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 1] ==
+                                         self.highlighted[1]) &
+                                        (self.vao_3d_dict[self.visible_blocks[self.highlighted]].instances[:, 2] ==
+                                         self.highlighted[2])), 0
                         )
                         self.vao_3d_dict[self.visible_blocks[self.highlighted]].vao_update()
                         del self.visible_blocks[self.highlighted]
                         self.highlighted = None
                     self.world_instances[new_block] = self.selected_block
                     self.visible_blocks[new_block] = self.selected_block
-                    self.vao_3d_dict[self.selected_block].instances_list[new_block] = \
-                        len(self.vao_3d_dict[self.selected_block].instances_list)
-                    self.vao_3d_dict[self.selected_block].instances = numpy.array(
-                        tuple(self.vao_3d_dict[self.selected_block].instances_list.keys()), dtype=numpy.float32
-                    )
+                    if len(self.vao_3d_dict[self.selected_block].instances) > 0:
+                        self.vao_3d_dict[self.selected_block].instances = numpy.append(
+                            self.vao_3d_dict[self.selected_block].instances,
+                            numpy.array([new_block], dtype=numpy.float32), 0
+                        )
+                    else:
+                        self.vao_3d_dict[self.selected_block].instances = numpy.array([new_block], dtype=numpy.float32)
                     self.vao_3d_dict[self.selected_block].vao_update()
         else:
             self.place_delay = 0
         if self.place_delay > 0:
             self.place_delay -= time_s
         if self.breaking and self.breaking_block.tolist() != self.highlighted.tolist():
-            self.break_delay = 1
+            self.break_delay = 0.25
             self.breaking_block = self.highlighted
         if self.break_delay > 0:
             self.break_delay -= time_s
@@ -770,7 +764,7 @@ class App:
         elif self.mouse_visibility:
             if self.in_menu:
                 if "return_button_outline" in self.vao_2d_dict:
-                    if (x_pos, y_pos) in RETURN_BUTTON_HITBOX:
+                    if 440 < x_pos < 440 + 400 and 240 < y_pos < 240 + 40:
                         if self.vao_2d_dict["return_button_outline"].texture_name != \
                                 "textures/highlighted_button_outline.png":
                             self.vao_2d_dict["return_button_outline"].texture_name = \
@@ -781,7 +775,7 @@ class App:
                         self.vao_2d_dict["return_button_outline"].texture_name = "textures/normal_button_outline.png"
                         self.vao_2d_dict["return_button_outline"].texture = \
                             self.load_texture("textures/normal_button_outline.png")
-                if (x_pos, y_pos) in NEW_GAME_BUTTON_HITBOX:
+                if 440 < x_pos < 440 + 400 and 290 < y_pos < 290 + 40:
                     if self.vao_2d_dict["new_game_button_outline"].texture_name != \
                             "textures/highlighted_button_outline.png":
                         self.vao_2d_dict["new_game_button_outline"].texture_name = \
@@ -792,7 +786,7 @@ class App:
                     self.vao_2d_dict["new_game_button_outline"].texture_name = "textures/normal_button_outline.png"
                     self.vao_2d_dict["new_game_button_outline"].texture = \
                         self.load_texture("textures/normal_button_outline.png")
-                if (x_pos, y_pos) in QUIT_BUTTON_HITBOX:
+                if 440 < x_pos < 440 + 400 and 340 < y_pos < 340 + 40:
                     if self.vao_2d_dict["quit_button_outline"].texture_name != \
                             "textures/highlighted_button_outline.png":
                         self.vao_2d_dict["quit_button_outline"].texture_name = "textures/highlighted_button_outline.png"
@@ -806,8 +800,8 @@ class App:
                 for vao in self.vao_2d_dict:
                     if "slot" in vao and "inventory" in vao and "active" not in vao:
                         instance = tuple(self.vao_2d_dict[vao].instances[0])
-                        if x_pos in range(int(instance[0]), int(instance[0]) + 32) and \
-                                y_pos in range(int(instance[1]), int(instance[1]) + 32):
+                        if int(instance[0]) < x_pos < int(instance[0]) + 32 and \
+                                int(instance[1]) < y_pos < int(instance[1]) + 32:
                             self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array(
                                 [[int(instance[0]), int(instance[1]), -0.2]], dtype=numpy.float32
                             ))
@@ -816,7 +810,58 @@ class App:
                             self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array([], dtype=numpy.float32))
 
     def mouse_button_callback(self, button):
-        if button == 4:
+        mouse_pos = pygame.mouse.get_pos()
+        if button == 1:
+            if self.mouse_visibility:
+                if self.in_menu:
+                    if 440 < mouse_pos[0] < 440 + 400 and 240 < mouse_pos[1] < 240 + 40:
+                        pygame.mouse.set_visible(False)
+                        self.mouse_visibility = False
+                        pygame.mouse.set_pos(self.width / 2, self.height / 2)
+                        self.paused = False
+                        self.in_menu = False
+                    elif 440 < mouse_pos[0] < 440 + 400 and 290 < mouse_pos[1] < 290 + 40:
+                        self.char_10.add_text("F.I. World", [430.0, 120.0, -0.4])
+                        self.paused = False
+                        self.in_game = True
+                        self.new_game = True
+                    elif 440 < mouse_pos[0] < 440 + 400 and 340 < mouse_pos[1] < 340 + 40:
+                        pygame.event.post(pygame.event.Event(pygame.QUIT, dict()))
+                if self.in_inventory:
+                    if not (464 < mouse_pos[0] < 464 + 352 and 146 < mouse_pos[1] < 146 + 332):
+                        pygame.mouse.set_pos(self.width / 2, self.height / 2)
+                        pygame.mouse.set_visible(False)
+                        self.mouse_visibility = False
+                        self.paused = False
+                        self.in_inventory = False
+                    elif len(self.vao_2d_dict["active_inventory_slot"].instances) > 0:
+                        instance = tuple(self.vao_2d_dict["active_inventory_slot"].instances[0])
+                        if f"inventory_slot_{int(((int(instance[0]) - 444) / 36) + (int(instance[1]) - 314) / 4)}" in \
+                                self.vao_2d_dict:
+                            mouse_vao = \
+                                f"inventory_slot_{int(((int(instance[0]) - 444) / 36) + (int(instance[1]) - 314) / 4)}"
+                        elif f"inventory_hotbar_slot_{int(((int(instance[0]) - 444) / 36))}" in self.vao_2d_dict:
+                            mouse_vao = f"inventory_hotbar_slot_{int(((int(instance[0]) - 444) / 36))}"
+                        else:
+                            mouse_vao = None
+                        if mouse_vao is not None:
+                            self.vao_2d_dict["mouse_inventory"].vao_update(numpy.array(
+                                [[int(instance[0]), int(instance[1]), -0.3]], dtype=numpy.float32
+                            ))
+                            self.vao_2d_dict["mouse_inventory"].texture_name, \
+                                self.vao_2d_dict[mouse_vao].texture_name = self.vao_2d_dict[mouse_vao].texture_name, \
+                                self.vao_2d_dict["mouse_inventory"].texture_name
+                            self.vao_2d_dict["mouse_inventory"].texture, self.vao_2d_dict[mouse_vao].texture = \
+                                self.vao_2d_dict[mouse_vao].texture, self.vao_2d_dict["mouse_inventory"].texture
+                            if "hotbar" in mouse_vao:
+                                self.vao_2d_dict[f"hotbar_{mouse_vao[-1]}"].texture_name = \
+                                    self.vao_2d_dict[mouse_vao].texture_name
+                                self.vao_2d_dict[f"hotbar_{mouse_vao[-1]}"].texture = \
+                                    self.vao_2d_dict[mouse_vao].texture
+                                self.selected_block = self.vao_2d_dict[
+                                    f"hotbar_{int((self.vao_2d_dict['active_bar'].instances[0][0] - 416.0) / 40.0)}"
+                                ].texture_name
+        elif button == 4:
             if not self.paused:
                 new_hotbar = int((self.vao_2d_dict["active_bar"].instances[0][0] - 416.0) / 40.0 - 1.0)
                 if new_hotbar < 1:
@@ -870,7 +915,7 @@ class App:
                 self.vao_2d_dict["active_bar"].vao_update()
 
     def block_face(self):
-        x, y, z = self.cam.camera_pos + self.ray_wor * (self.ray_i - 0.1)
+        x, y, z = self.cam.camera_pos + self.ray_wor * (self.ray_i - 0.01)
         y += 1.62
         x, y, z = int(self.check_value(x, 0)), int(self.check_value(y, 0)), int(self.check_value(z, 0))
         hx, hy, hz = self.highlighted
@@ -880,9 +925,10 @@ class App:
         else:
             return hx, hy, hz
 
-    def compile_shader(self, vs, fs):
-        vert_shader = self.load_shader(vs)
-        frag_shader = self.load_shader(fs)
+    @staticmethod
+    def compile_shader(vs, fs):
+        vert_shader = App.load_shader(vs)
+        frag_shader = App.load_shader(fs)
 
         shader = OpenGL.GL.shaders.compileProgram(OpenGL.GL.shaders.compileShader(vert_shader, GL_VERTEX_SHADER),
                                                   OpenGL.GL.shaders.compileShader(frag_shader, GL_FRAGMENT_SHADER))
@@ -932,7 +978,7 @@ class App:
 class Camera:
     def __init__(self, app):
         self.app = app
-        self.camera_pos = pyrr.Vector3([0.0, 0.0, 0.0])
+        self.camera_pos = pyrr.Vector3([0.0, -100.0, 0.0])
         self.camera_front = pyrr.Vector3([0.0, 0.0, -1.0])
         self.camera_up = pyrr.Vector3([0.0, 1.0, 0.0])
         self.camera_right = pyrr.Vector3([1.0, 0.0, 0.0])
@@ -957,7 +1003,6 @@ class Camera:
             self.check_pos(2, numpy.sin(numpy.radians(self.yaw) + numpy.pi / 2) * velocity)
         elif direction == "UP":
             self.camera_pos[1] += velocity
-            self.check_pos(1, velocity)
 
     def process_mouse_movement(self, x_offset, y_offset, constrain_pitch=True):
         x_offset *= self.mouse_sensitivity
@@ -989,12 +1034,17 @@ class Camera:
         if self.app.crouching:
             y += 0.125
         x, y, z = self.app.check_value(x, 0.3), self.app.check_value(y, 0), self.app.check_value(z, 0.3)
+        crouch_counter = 0
         for i1, i2 in {(-.3, -.3), (-.3, .3), (.3, -.3), (.3, .3)}:
             ix, iy, iz = int(x + i1), y, int(z + i2)
             if (ix, int(iy), iz) in self.app.visible_blocks or (ix, int(iy + 1), iz) in self.app.visible_blocks or \
                     (ix, int(iy + 1.85), iz) in self.app.visible_blocks:
                 self.camera_pos[axis] -= distance
                 return
+            elif self.app.crouching and not self.app.flying and (ix, int(iy - 1), iz) not in self.app.visible_blocks:
+                crouch_counter += 1
+        if crouch_counter >= 4:
+            self.camera_pos[axis] -= distance
 
     @staticmethod
     def look_at(position, target, world_up):
@@ -1022,7 +1072,8 @@ class Camera:
 
 
 class ChunkManager:
-    def __init__(self, app, pos):  # todo separate blocks into chunks and check them dependent on which chunk they are
+    def __init__(self, chunk_i, app, pos):
+        self.chunk_i = chunk_i
         self.app = app
         self.pos = pos
 
@@ -1078,12 +1129,9 @@ class VAOManager:
         else:
             self.texture_name = texture_dir[0]
             self.texture = App.load_texture(texture_dir)
-        self.instances_list = dict()
-        for pos in block_instances:
-            self.instances_list[tuple(pos)] = len(self.instances_list)
-        self.instances = numpy.array(tuple(self.instances_list.keys()), dtype=numpy.float32)
         self.instance_vbo = glGenBuffers(1)
         self.highlighted_vbo = glGenBuffers(1)
+        self.instances = numpy.array(block_instances, dtype=numpy.float32)
         glBindBuffer(GL_ARRAY_BUFFER, self.instance_vbo)
         glBufferData(GL_ARRAY_BUFFER, self.instances.flatten().itemsize * len(self.instances.flatten()),
                      self.instances.flatten(), GL_STATIC_DRAW)
@@ -1094,10 +1142,7 @@ class VAOManager:
 
     def vao_update(self, instances=None):
         if instances is not None:
-            self.instances_list.clear()
-            for pos in instances:
-                self.instances_list[tuple(pos)] = len(self.instances_list)
-            self.instances = numpy.array(tuple(self.instances_list.keys()), dtype=numpy.float32)
+            self.instances = numpy.array(instances, dtype=numpy.float32)
         glBindVertexArray(self.vao)
         glBindBuffer(GL_ARRAY_BUFFER, self.instance_vbo)
         glBufferData(GL_ARRAY_BUFFER, self.instances.flatten().itemsize *
@@ -1108,7 +1153,6 @@ class VAOManager:
 class TextManager:
     def __init__(self, app, character_size, ascii_type=ASCII_PNG):
         self.app = app
-        self.text_dict = dict()
         self.character_size = character_size
         character = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0,
                                  0.0, 8.0 * character_size, 0.0, 0.0, 1.0,
@@ -1161,14 +1205,34 @@ class TextManager:
             else:
                 pos[0] += self.character_size * 5
 
+    def remove_text(self, text, pos):
+        for character in text:
+            self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].instances = numpy.delete(
+                self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].instances,
+                numpy.where(
+                    (self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].instances[:, 0] == pos[0]) &
+                    (self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].instances[:, 1] == pos[1]) &
+                    (self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].instances[:, 2] == pos[2])
+                ), 0
+            )
+            self.app.vao_2d_dict[f"character_{self.character_size}_{character}"].vao_update()
+            if character in CHARACTER_DICT:
+                pos[0] += self.character_size * (CHARACTER_DICT[character][0][1][0] + 1)
+            elif character.lower() in CHARACTER_DICT:
+                pos[0] += self.character_size * (CHARACTER_DICT[character.lower()][1][1][0] + 1)
+            elif character in SPECIAL_CHARACTER_DICT:
+                pos[0] += self.character_size * (SPECIAL_CHARACTER_DICT[character][1][0] + 1)
+            else:
+                pos[0] += self.character_size * 5
+
     def clear(self):
         for char in CHARACTER_DICT:
-            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].instances_list) > 0:
+            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].instances) > 0:
                 self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].vao_update([])
-            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char.upper()}"].instances_list) > 0:
+            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char.upper()}"].instances) > 0:
                 self.app.vao_2d_dict[f"character_{self.character_size}_{char.upper()}"].vao_update([])
         for char in SPECIAL_CHARACTER_DICT:
-            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].instances_list) > 0:
+            if len(self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].instances) > 0:
                 self.app.vao_2d_dict[f"character_{self.character_size}_{char}"].vao_update([])
 
 
