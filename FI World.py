@@ -58,6 +58,35 @@ CUBE = numpy.array([0.0, 0.0, 1.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 1.0, 0.0,
                     0.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 0.0, 1.0], dtype=numpy.float32)
+HIGHLIGHTED_CUBE = numpy.array([-0.001, -0.001, 1.001, 0.0, 0.0,
+                                1.001, -0.001, 1.001, 1.0, 0.0,
+                                1.001, 1.001, 1.001, 1.0, 1.0,
+                                -0.001, 1.001, 1.001, 0.0, 1.0,
+
+                                -0.001, -0.001, -0.001, 0.0, 0.0,
+                                1.001, -0.001, -0.001, 1.0, 0.0,
+                                1.001, 1.001, -0.001, 1.0, 1.0,
+                                -0.000, 1.001, -0.001, 0.0, 1.0,
+
+                                1.001, -0.001, -0.001, 0.0, 0.0,
+                                1.001, 1.001, -0.001, 0.0, 1.0,
+                                1.001, 1.001, 1.001, 1.0, 1.0,
+                                1.001, -0.001, 1.001, 1.0, 0.0,
+
+                                -0.001, 1.001, -0.001, 1.0, 1.0,
+                                -0.001, -0.001, -0.001, 1.0, 0.0,
+                                -0.001, -0.001, 1.001, 0.0, 0.0,
+                                -0.001, 1.001, 1.001, 0.0, 1.0,
+
+                                -0.001, -0.001, -0.001, 0.0, 0.0,
+                                1.001, -0.001, -0.001, 1.0, 0.0,
+                                1.001, -0.001, 1.001, 1.0, 1.0,
+                                -0.001, -0.001, 1.001, 0.0, 1.0,
+
+                                1.001, 1.001, -0.001, 0.0, 0.0,
+                                -0.001, 1.001, -0.001, 1.0, 0.0,
+                                -0.001, 1.001, 1.001, 1.0, 1.0,
+                                1.001, 1.001, 1.001, 0.0, 1.0], dtype=numpy.float32)
 HOTBAR = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0,
                       0.0, 44.0, 0.0, 0.0, 1.0,
                       364.0, 44.0, 0.0, 1.0, 1.0,
@@ -164,7 +193,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.cam = Camera(self)
 
-        self.chunks = 3  # radius of chunks around player in world (temporary variable)
+        self.chunks = 2  # radius of chunks around player in world (temporary variable)
         self.mouse_visibility = True
         self.in_game = False
         self.in_menu = True
@@ -177,6 +206,7 @@ class App:
         self.vao_3d_dict = dict()
         self.vao_2d_dict = dict()
         self.block_list = list()
+        block_break = list()
 
         self.highlighted = None
         self.breaking_block = None
@@ -221,6 +251,8 @@ class App:
         self.char_3.add_text("New Game", [565.0, 300.0, -0.3])
         self.char_3.add_text("Quit", [610.0, 350.0, -0.3])
         self.char_2.add_text(f"{self.fps}", [1240.0, 20.0, -0.4])
+        for stage in range(10):
+            block_break.append(self.load_texture(f"textures/destroy_stage_{stage}.png"))
         for block in os.listdir("./textures/blocks"):
             self.vao_3d_dict[f"textures/blocks/{block}"] = VAOManager(
                 CUBE, CUBE_INDICES, CUBE_INDICES_EDGES, f"textures/blocks/{block}", []
@@ -354,6 +386,10 @@ class App:
                     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
                     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo)
                     glBindTexture(GL_TEXTURE_2D, self.vao_3d_dict[vao].texture)
+                    glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].data_vbo)
+                    glBufferData(GL_ARRAY_BUFFER,
+                                 self.vao_3d_dict[vao].vbo_data.itemsize * len(self.vao_3d_dict[vao].vbo_data),
+                                 self.vao_3d_dict[vao].vbo_data, GL_STATIC_DRAW)
                     glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].instance_vbo)
                     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
                     glEnableVertexAttribArray(2)
@@ -361,14 +397,27 @@ class App:
                     glDrawElementsInstanced(GL_TRIANGLES, len(CUBE_INDICES),
                                             GL_UNSIGNED_INT, None, int(len(self.vao_3d_dict[vao].instances)))
                     if self.highlighted is not None and self.visible_blocks[tuple(self.highlighted)] == vao:
-                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo_edge)
+                        if self.breaking:
+                            if self.break_delay >= 0:
+                                glBindTexture(GL_TEXTURE_2D, block_break[
+                                    int(-(self.break_delay - (0.5 - (0.5 / 10))) / (0.5 / 10))
+                                ])
+                            else:
+                                glBindTexture(GL_TEXTURE_2D, block_break[int((0.5 - (0.5 / 10)) / (0.5 / 10))])
+                        glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].data_vbo)
+                        glBufferData(GL_ARRAY_BUFFER, HIGHLIGHTED_CUBE.itemsize * len(HIGHLIGHTED_CUBE),
+                                     HIGHLIGHTED_CUBE, GL_STATIC_DRAW)
                         glBindBuffer(GL_ARRAY_BUFFER, self.vao_3d_dict[vao].highlighted_vbo)
                         glBufferData(GL_ARRAY_BUFFER, self.highlighted.itemsize * len(self.highlighted.flatten()),
                                      self.highlighted.flatten(), GL_STATIC_DRAW)
                         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
                         glEnableVertexAttribArray(2)
                         glVertexAttribDivisor(2, 1)
+                        if self.breaking:
+                            glDrawElementsInstanced(GL_TRIANGLES, len(CUBE_INDICES),
+                                                    GL_UNSIGNED_INT, None, int(len(self.highlighted)) - 2)
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vao_3d_dict[vao].ebo_edge)
                         glBindTexture(GL_TEXTURE_2D, 0)
                         glLineWidth(4)  # todo figure out how large the outlines need to be for highlighted blocks
                         glDrawElementsInstanced(GL_QUADS, len(CUBE_INDICES_EDGES),
@@ -450,13 +499,10 @@ class App:
             for pos in self.vao_3d_dict[vao].instances:
                 self.world_instances[tuple(pos)] = vao
         for pos in self.world_instances:
-            i = 0
             px, py, pz = pos
-            for x, y, z in ((px + 1, py, pz), (px, py + 1, pz), (px, py, pz + 1),
-                            (px - 1, py, pz), (px, py - 1, pz), (px, py, pz - 1)):
-                if (x, y, z) in self.world_instances:
-                    i += 1
-            if i < 6:
+            if not ((px + 1, py, pz) in self.world_instances and (px, py + 1, pz) in self.world_instances and
+                    (px, py, pz + 1) in self.world_instances and (px - 1, py, pz) in self.world_instances and
+                    (px, py - 1, pz) in self.world_instances and (px, py, pz - 1) in self.world_instances):
                 self.visible_blocks[pos] = self.world_instances[pos]
         for vao in self.vao_3d_dict:
             if vao in self.visible_blocks.values():
@@ -633,7 +679,7 @@ class App:
         if mouse_buttons[0]:
             if not self.mouse_visibility and self.highlighted is not None:
                 if self.break_delay <= 0 and not self.breaking:
-                    self.break_delay = 0.25
+                    self.break_delay = 0.5
                     self.breaking = True
                     self.breaking_block = self.highlighted
                 if self.break_delay <= 0 and self.breaking and \
@@ -749,7 +795,7 @@ class App:
         if self.place_delay > 0:
             self.place_delay -= time_s
         if self.breaking and self.breaking_block.tolist() != self.highlighted.tolist():
-            self.break_delay = 0.25
+            self.break_delay = 0.5
             self.breaking_block = self.highlighted
         if self.break_delay > 0:
             self.break_delay -= time_s
@@ -1103,24 +1149,25 @@ class VAOManager:
         glBindVertexArray(self.vao)
 
         self.data_vbo = glGenBuffers(1)
+        self.vbo_data = vbo_data
         glBindBuffer(GL_ARRAY_BUFFER, self.data_vbo)
-        glBufferData(GL_ARRAY_BUFFER, vbo_data.itemsize * len(vbo_data), vbo_data, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, self.vbo_data.itemsize * len(self.vbo_data), self.vbo_data, GL_STATIC_DRAW)
 
         self.ebo = glGenBuffers(1)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, ebo_data.itemsize * len(ebo_data), ebo_data, GL_STATIC_DRAW)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vbo_data.itemsize * 5, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, self.vbo_data.itemsize * 5, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vbo_data.itemsize * 5, ctypes.c_void_p(12))
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, self.vbo_data.itemsize * 5, ctypes.c_void_p(12))
         glEnableVertexAttribArray(1)
 
         self.ebo_edge = glGenBuffers(1)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo_edge)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, ebo_edge_data.itemsize * len(ebo_edge_data),
                      ebo_edge_data, GL_STATIC_DRAW)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vbo_data.itemsize * 5, ctypes.c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, self.vbo_data.itemsize * 5, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, vbo_data.itemsize * 5, ctypes.c_void_p(12))
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, self.vbo_data.itemsize * 5, ctypes.c_void_p(12))
         glEnableVertexAttribArray(3)
 
         if isinstance(texture_dir, str):
