@@ -58,35 +58,35 @@ CUBE = numpy.array([0.0, 0.0, 1.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 1.0, 0.0,
                     0.0, 1.0, 1.0, 1.0, 1.0,
                     1.0, 1.0, 1.0, 0.0, 1.0], dtype=numpy.float32)
-HIGHLIGHTED_CUBE = numpy.array([-0.001, -0.001, 1.001, 0.0, 0.0,
-                                1.001, -0.001, 1.001, 1.0, 0.0,
-                                1.001, 1.001, 1.001, 1.0, 1.0,
-                                -0.001, 1.001, 1.001, 0.0, 1.0,
+HIGHLIGHTED_CUBE = numpy.array([-0.02, -0.02, 1.02, 0.0, 0.0,
+                                1.02, -0.02, 1.02, 1.0, 0.0,
+                                1.02, 1.02, 1.02, 1.0, 1.0,
+                                -0.02, 1.02, 1.02, 0.0, 1.0,
 
-                                -0.001, -0.001, -0.001, 0.0, 0.0,
-                                1.001, -0.001, -0.001, 1.0, 0.0,
-                                1.001, 1.001, -0.001, 1.0, 1.0,
-                                -0.000, 1.001, -0.001, 0.0, 1.0,
+                                -0.02, -0.02, -0.02, 0.0, 0.0,
+                                1.02, -0.02, -0.02, 1.0, 0.0,
+                                1.02, 1.02, -0.02, 1.0, 1.0,
+                                -0.02, 1.02, -0.02, 0.0, 1.0,
 
-                                1.001, -0.001, -0.001, 0.0, 0.0,
-                                1.001, 1.001, -0.001, 0.0, 1.0,
-                                1.001, 1.001, 1.001, 1.0, 1.0,
-                                1.001, -0.001, 1.001, 1.0, 0.0,
+                                1.02, -0.02, -0.02, 0.0, 0.0,
+                                1.02, 1.02, -0.02, 0.0, 1.0,
+                                1.02, 1.02, 1.02, 1.0, 1.0,
+                                1.02, -0.02, 1.02, 1.0, 0.0,
 
-                                -0.001, 1.001, -0.001, 1.0, 1.0,
-                                -0.001, -0.001, -0.001, 1.0, 0.0,
-                                -0.001, -0.001, 1.001, 0.0, 0.0,
-                                -0.001, 1.001, 1.001, 0.0, 1.0,
+                                -0.02, 1.02, -0.02, 1.0, 1.0,
+                                -0.02, -0.02, -0.02, 1.0, 0.0,
+                                -0.02, -0.02, 1.02, 0.0, 0.0,
+                                -0.02, 1.02, 1.02, 0.0, 1.0,
 
-                                -0.001, -0.001, -0.001, 0.0, 0.0,
-                                1.001, -0.001, -0.001, 1.0, 0.0,
-                                1.001, -0.001, 1.001, 1.0, 1.0,
-                                -0.001, -0.001, 1.001, 0.0, 1.0,
+                                -0.02, -0.02, -0.02, 0.0, 0.0,
+                                1.02, -0.02, -0.02, 1.0, 0.0,
+                                1.02, -0.02, 1.02, 1.0, 1.0,
+                                -0.02, -0.02, 1.02, 0.0, 1.0,
 
-                                1.001, 1.001, -0.001, 0.0, 0.0,
-                                -0.001, 1.001, -0.001, 1.0, 0.0,
-                                -0.001, 1.001, 1.001, 1.0, 1.0,
-                                1.001, 1.001, 1.001, 0.0, 1.0], dtype=numpy.float32)
+                                1.02, 1.02, -0.02, 0.0, 0.0,
+                                -0.02, 1.02, -0.02, 1.0, 0.0,
+                                -0.02, 1.02, 1.02, 1.0, 1.0,
+                                1.02, 1.02, 1.02, 0.0, 1.0], dtype=numpy.float32)
 HOTBAR = numpy.array([0.0, 0.0, 0.0, 0.0, 0.0,
                       0.0, 44.0, 0.0, 0.0, 1.0,
                       364.0, 44.0, 0.0, 1.0, 1.0,
@@ -185,6 +185,7 @@ ASCII_PNG = Image.open("textures/character_sheet/ascii.png")
 class App:
     def __init__(self, width, height):
         pygame.init()
+        pygame.mixer.Sound("Loituma - levans Polka Instrumental Cover (MIDI).ogg").play(-1)
         self.width, self.height = width, height
         pygame.display.set_caption("F.I. World")
         self.main_window = pygame.display.set_mode((self.width, self.height),
@@ -195,8 +196,8 @@ class App:
 
         self.chunks = 2  # radius of chunks around player in world (temporary variable)
         self.mouse_visibility = True
-        self.in_game = False
         self.in_menu = True
+        self.in_game = False
         self.in_inventory = False
         self.paused = False
         self.new_game = False
@@ -224,8 +225,8 @@ class App:
         self.break_delay = 0
         self.fly_delay = 0
         self.air_velocity = 0
-        self.lastX, self.lastY = self.width / 2, self.height / 2
         self.fps = 0
+        self.lastX, self.lastY = self.width / 2, self.height / 2
 
         glClearColor(135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0, 0.0)
         glClearDepth(1.0)  # may be optional
@@ -676,6 +677,9 @@ class App:
     def mouse_button_check(self):
         mouse_buttons = pygame.mouse.get_pressed()
         time_s = self.clock.get_time() / 1000
+        if self.breaking and (self.highlighted is None or self.breaking_block.tolist() != self.highlighted.tolist()):
+            self.break_delay = 0.5
+            self.breaking_block = self.highlighted
         if mouse_buttons[0]:
             if not self.mouse_visibility and self.highlighted is not None:
                 if self.break_delay <= 0 and not self.breaking:
@@ -794,9 +798,6 @@ class App:
             self.place_delay = 0
         if self.place_delay > 0:
             self.place_delay -= time_s
-        if self.breaking and self.breaking_block.tolist() != self.highlighted.tolist():
-            self.break_delay = 0.5
-            self.breaking_block = self.highlighted
         if self.break_delay > 0:
             self.break_delay -= time_s
 
@@ -810,7 +811,8 @@ class App:
         elif self.mouse_visibility:
             if self.in_menu:
                 if "return_button_outline" in self.vao_2d_dict:
-                    if 440 < x_pos < 440 + 400 and 240 < y_pos < 240 + 40:
+                    if (440 / 1280) * self.width < x_pos < ((440 + 400) / 1280) * self.width and \
+                            (240 / 720) * self.height < y_pos < ((240 + 40) / 720) * self.height:
                         if self.vao_2d_dict["return_button_outline"].texture_name != \
                                 "textures/highlighted_button_outline.png":
                             self.vao_2d_dict["return_button_outline"].texture_name = \
@@ -821,7 +823,8 @@ class App:
                         self.vao_2d_dict["return_button_outline"].texture_name = "textures/normal_button_outline.png"
                         self.vao_2d_dict["return_button_outline"].texture = \
                             self.load_texture("textures/normal_button_outline.png")
-                if 440 < x_pos < 440 + 400 and 290 < y_pos < 290 + 40:
+                if (440 / 1280) * self.width < x_pos < ((440 + 400) / 1280) * self.width and \
+                        (290 / 720) * self.height < y_pos < ((290 + 40) / 720) * self.height:
                     if self.vao_2d_dict["new_game_button_outline"].texture_name != \
                             "textures/highlighted_button_outline.png":
                         self.vao_2d_dict["new_game_button_outline"].texture_name = \
@@ -832,7 +835,8 @@ class App:
                     self.vao_2d_dict["new_game_button_outline"].texture_name = "textures/normal_button_outline.png"
                     self.vao_2d_dict["new_game_button_outline"].texture = \
                         self.load_texture("textures/normal_button_outline.png")
-                if 440 < x_pos < 440 + 400 and 340 < y_pos < 340 + 40:
+                if (440 / 1280) * self.width < x_pos < ((440 + 400) / 1280) * self.width and \
+                        (340 / 720) * self.height < y_pos < ((340 + 40) / 720) * self.height:
                     if self.vao_2d_dict["quit_button_outline"].texture_name != \
                             "textures/highlighted_button_outline.png":
                         self.vao_2d_dict["quit_button_outline"].texture_name = "textures/highlighted_button_outline.png"
@@ -860,18 +864,21 @@ class App:
         if button == 1:
             if self.mouse_visibility:
                 if self.in_menu:
-                    if 440 < mouse_pos[0] < 440 + 400 and 240 < mouse_pos[1] < 240 + 40:
+                    if (440 / 1280) * self.width < mouse_pos[0] < ((440 + 400) / 1280) * self.width and \
+                            (240 / 720) * self.height < mouse_pos[1] < ((240 + 40) / 720) * self.height:
                         pygame.mouse.set_visible(False)
                         self.mouse_visibility = False
                         pygame.mouse.set_pos(self.width / 2, self.height / 2)
                         self.paused = False
                         self.in_menu = False
-                    elif 440 < mouse_pos[0] < 440 + 400 and 290 < mouse_pos[1] < 290 + 40:
+                    elif (440 / 1280) * self.width < mouse_pos[0] < ((440 + 400) / 1280) * self.width and \
+                            (290 / 720) * self.height < mouse_pos[1] < ((290 + 40) / 720) * self.height:
                         self.char_10.add_text("F.I. World", [430.0, 120.0, -0.4])
                         self.paused = False
                         self.in_game = True
                         self.new_game = True
-                    elif 440 < mouse_pos[0] < 440 + 400 and 340 < mouse_pos[1] < 340 + 40:
+                    elif (440 / 1280) * self.width < mouse_pos[0] < ((440 + 400) / 1280) * self.width and \
+                            (340 / 720) * self.height < mouse_pos[1] < ((340 + 40) / 720) * self.height:
                         pygame.event.post(pygame.event.Event(pygame.QUIT, dict()))
                 if self.in_inventory:
                     if not (464 < mouse_pos[0] < 464 + 352 and 146 < mouse_pos[1] < 146 + 332):
