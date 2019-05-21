@@ -185,7 +185,7 @@ ASCII_PNG = Image.open("textures/character_sheet/ascii.png")
 class App:
     def __init__(self, width, height):
         pygame.init()
-        pygame.mixer.Sound("Loituma - levans Polka Instrumental Cover (MIDI).ogg").play(-1)
+        pygame.mixer.Sound("Loituma - levans Polka.ogg").play(-1)
         self.width, self.height = width, height
         pygame.display.set_caption("F.I. World")
         self.main_window = pygame.display.set_mode((self.width, self.height),
