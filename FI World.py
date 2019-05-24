@@ -375,7 +375,7 @@ class App:
                 if self.in_inventory:
                     mx, my = pygame.mouse.get_pos()
                     self.vao_2d_dict["mouse_inventory"].vao_update(numpy.array(
-                        [[mx, my, -0.1]], dtype=numpy.float32
+                        [[mx * (1280 / self.width), my * (720 / self.height), -0.1]], dtype=numpy.float32
                     ))
 
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, cube_model)
@@ -850,8 +850,9 @@ class App:
                 for vao in self.vao_2d_dict:
                     if "slot" in vao and "inventory" in vao and "active" not in vao:
                         instance = tuple(self.vao_2d_dict[vao].instances[0])
-                        if int(instance[0]) < x_pos < int(instance[0]) + 32 and \
-                                int(instance[1]) < y_pos < int(instance[1]) + 32:
+                        if (int(instance[0]) / 1280) * self.width < x_pos < ((int(instance[0]) + 32) / 1280) * \
+                                self.width and (int(instance[1]) / 720) * self.height < y_pos < \
+                                ((int(instance[1]) + 32) / 720) * self.height:
                             self.vao_2d_dict["active_inventory_slot"].vao_update(numpy.array(
                                 [[int(instance[0]), int(instance[1]), -0.2]], dtype=numpy.float32
                             ))
@@ -881,7 +882,8 @@ class App:
                             (340 / 720) * self.height < mouse_pos[1] < ((340 + 40) / 720) * self.height:
                         pygame.event.post(pygame.event.Event(pygame.QUIT, dict()))
                 if self.in_inventory:
-                    if not (464 < mouse_pos[0] < 464 + 352 and 146 < mouse_pos[1] < 146 + 332):
+                    if not ((464 / 1280) * self.width < mouse_pos[0] < ((464 + 352) / 1280) * self.width and (146 / 720)
+                            * self.height < mouse_pos[1] < ((146 + 332) / 720) * self.height):
                         pygame.mouse.set_pos(self.width / 2, self.height / 2)
                         pygame.mouse.set_visible(False)
                         self.mouse_visibility = False
@@ -1094,7 +1096,8 @@ class Camera:
                     (ix, int(iy + 1.85), iz) in self.app.visible_blocks:
                 self.camera_pos[axis] -= distance
                 return
-            elif self.app.crouching and not self.app.flying and (ix, int(iy - 1), iz) not in self.app.visible_blocks:
+            elif self.app.crouching and not self.app.flying and not self.app.jumping \
+                    and (ix, int(iy - 1), iz) not in self.app.visible_blocks:
                 crouch_counter += 1
         if crouch_counter >= 4:
             self.camera_pos[axis] -= distance

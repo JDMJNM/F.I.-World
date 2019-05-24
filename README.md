@@ -12,6 +12,8 @@
 * E - Access inventory
 * Esc - Pause game and open menu
 * P - Respawn at starting position
+# V1.2.5
+* Fixed minor bugs
 # V1.2.4
 * Patched sprinting and flying:
     * Both sprinting and flying have a delay time of 250 milliseconds instead of the previous 1000 milliseconds.
