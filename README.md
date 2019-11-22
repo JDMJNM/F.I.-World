@@ -12,8 +12,6 @@
 * E - Access inventory
 * Esc - Pause game and open menu
 * P - Respawn at starting position
-# V1.3.5
-* Changed technique of highlighting blocks from ray marching to binary checking.
 # V1.2.5
 * Fixed minor bugs
 # V1.2.4

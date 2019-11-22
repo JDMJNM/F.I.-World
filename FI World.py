@@ -359,39 +359,18 @@ class App:
                     ray_eye = pyrr.Vector4([*ray_eye.xy, -1.0, 0.0])
                     ray_wor = (numpy.linalg.inv(view) * ray_eye).xyz
                     self.ray_wor = pyrr.vector.normalise(ray_wor)
-                    points = [pyrr.Vector3(self.cam.camera_pos)]
-                    ray_cam = self.cam.camera_pos + self.ray_wor * 4
-                    ray_cam.y += 1.62
-                    self.ray_cam = ray_cam
-                    self.ray_i = 4
-                    ray_cam.x, ray_cam.y, ray_cam.z = int(self.check_value(ray_cam.x, 0)), \
-                                                      int(self.check_value(ray_cam.y, 0)), int(
-                        self.check_value(ray_cam.z, 0))
-                    ray_cam = [int(axis) for axis in ray_cam]
-                    points.append(ray_cam)
-                    integers = [0, 4]
-                    count = 100
-                    while True:
-                        ray_cam = self.cam.camera_pos + self.ray_wor * (sum(integers) / 2)
+                    for i in numpy.arange(1, 4, 0.01):
+                        ray_cam = self.cam.camera_pos + self.ray_wor * i
                         ray_cam.y += 1.62
                         self.ray_cam = ray_cam
-                        self.ray_i = (sum(integers) / 2)
+                        self.ray_i = i
                         ray_cam.x, ray_cam.y, ray_cam.z = int(self.check_value(ray_cam.x, 0)), \
-                                                          int(self.check_value(ray_cam.y, 0)), int(
-                            self.check_value(ray_cam.z, 0))
+                            int(self.check_value(ray_cam.y, 0)), int(self.check_value(ray_cam.z, 0))
                         ray_cam = [int(axis) for axis in ray_cam]
                         if tuple(ray_cam) in self.visible_blocks:
-                            points[1] = ray_cam
-                            integers[1] = (sum(integers) / 2)
-                        else:
-                            points[0] = ray_cam
-                            integers[0] = (sum(integers) / 2)
-                        count -= 1
-                        if count == 0:
-                            if tuple(points[1]) in self.visible_blocks:
-                                self.highlighted = numpy.array(points[1], dtype=numpy.float32)
+                            self.highlighted = numpy.array(ray_cam, dtype=numpy.float32)
                             break
-                    if self.highlighted is not None and list(self.highlighted) != points[1]:
+                    if self.highlighted is not None and list(self.highlighted) != ray_cam:
                         self.highlighted = None
                 if self.in_inventory:
                     mx, my = pygame.mouse.get_pos()
@@ -1059,7 +1038,7 @@ class Camera:
         self.camera_up = pyrr.Vector3([0.0, 1.0, 0.0])
         self.camera_right = pyrr.Vector3([1.0, 0.0, 0.0])
 
-        self.mouse_sensitivity = 0.125
+        self.mouse_sensitivity = 0.25
         self.yaw = -90.0
         self.pitch = 0.0
 
