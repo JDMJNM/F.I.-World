@@ -1038,7 +1038,7 @@ class Camera:
         self.camera_up = pyrr.Vector3([0.0, 1.0, 0.0])
         self.camera_right = pyrr.Vector3([1.0, 0.0, 0.0])
 
-        self.mouse_sensitivity = 0.25
+        self.mouse_sensitivity = 0.125
         self.yaw = -90.0
         self.pitch = 0.0
 
