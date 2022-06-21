@@ -2,7 +2,7 @@ altgraph==0.16.1
 future==0.17.1
 macholib==1.11
 multipledispatch==0.6.0
-numpy==1.16.2
+numpy==1.22.0
 pefile==2018.8.8
 Pillow==5.4.1
 pygame==1.9.4
