@@ -1,5 +1,5 @@
 altgraph==0.16.1
-future==0.17.1
+future==0.18.3
 macholib==1.11
 multipledispatch==0.6.0
 numpy==1.16.2
